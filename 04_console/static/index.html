@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Skill Factory Console — Universal L5–L8 Pipeline</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #1e293b;
+      --panel-2: #162033;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --teal: #14b8a6;
+      --amber: #f59e0b;
+      --red: #fb7185;
+      --green: #34d399;
+      --blue: #60a5fa;
+      --border: #334155;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.5;
+    }
+    header {
+      padding: 20px 28px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(120deg, #0f172a, #11243a);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+    header h1 { margin: 0; font-size: 20px; display: flex; align-items: center; gap: 10px; }
+    header p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    button {
+      background: var(--teal);
+      color: #06221f;
+      border: 0;
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    button.secondary { background: #334155; color: var(--text); }
+    button.amber { background: var(--amber); color: #1f1402; }
+    button.danger { background: var(--red); color: #2b0610; }
+    main { max-width: 1320px; margin: 0 auto; padding: 22px 24px 48px; }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 18px;
+    }
+    .kpi-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+    .kpi-value { font-size: 26px; font-weight: 700; margin-top: 6px; }
+    .kpi-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .tabs {
+      display: flex;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .tab-btn { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+    .tab-btn.active { background: var(--teal); color: #06221f; border-color: var(--teal); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .state-strip {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .state-node {
+      padding: 5px 11px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--muted);
+    }
+    .state-node.done { border-color: var(--green); color: var(--green); }
+    .state-node.active { background: var(--teal); color: #05201e; border-color: var(--teal); }
+    .state-node.blocked { background: var(--red); color: #2b0610; border-color: var(--red); }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 9px 10px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+    th { color: var(--muted); font-weight: 600; background: var(--panel-2); }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      background: #334155;
+      color: var(--text);
+    }
+    .badge.ok { background: rgba(52, 211, 153, 0.16); color: var(--green); }
+    .badge.err { background: rgba(251, 113, 133, 0.18); color: var(--red); }
+    .badge.warn { background: rgba(245, 158, 11, 0.18); color: var(--amber); }
+    .split-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 900px) { .split-2 { grid-template-columns: 1fr; } }
+    pre {
+      margin: 0;
+      padding: 12px;
+      background: #0b1220;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: auto;
+      max-height: 460px;
+      font-size: 12px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+    }
+    .dag-box {
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    .dag-flow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
+    .dag-node {
+      background: var(--panel);
+      border: 1px solid var(--teal);
+      border-radius: 8px;
+      padding: 7px 11px;
+      font-size: 12px;
+    }
+    .bar-wrap { background: #0b1220; border-radius: 6px; height: 14px; overflow: hidden; margin-top: 4px; }
+    .bar-fill { height: 100%; background: var(--teal); transition: width 0.3s ease; }
+    .bar-fill.base { background: var(--amber); }
+    input[type="text"], select {
+      background: #0b1220;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-size: 13px;
+    }
+    #toast {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      background: #0f172a;
+      border: 1px solid var(--teal);
+      padding: 11px 16px;
+      border-radius: 10px;
+      display: none;
+      font-size: 13px;
+      z-index: 999;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Skill Factory Console <span class="badge">Universal L5–L8 Engine</span></h1>
+      <p id="header-sub">범용 L1–L8 계약·지식·검증·릴리스 파이프라인 (원본 툴 무수정)</p>
+    </div>
+    <div class="actions">
+      <select id="tool-select" onchange="onToolChanged()"></select>
+      <button onclick="runPipeline(false)">▶ 파이프라인 실행</button>
+      <button class="amber" onclick="runPipeline(true)">↺ 결함 주입·자동수정 시연</button>
+      <button class="secondary" onclick="runBenchmark()">📊 범용 2-Way 벤치마크 갱신</button>
+      <button class="secondary" onclick="window.open('/share-report','_blank')">📄 검증 보고서 열기</button>
+      <button class="secondary" onclick="refreshAll()">↻ 새로고침</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="kpi-grid" id="kpis"></div>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <div>
+          <strong>최신 파이프라인 실행 상태 머신</strong>
+          <span id="run-meta" class="kpi-sub" style="margin-left:10px;"></span>
+        </div>
+        <div class="actions" id="release-actions"></div>
+      </div>
+      <div class="state-strip" id="state-strip"></div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" onclick="openTab('tab-contracts', this)">L1–L4 계약 정규화</button>
+      <button class="tab-btn" onclick="openTab('tab-knowledge', this)">L5 지식 &amp; L6 워크플로 DAG</button>
+      <button class="tab-btn" onclick="openTab('tab-diff', this)">L7 컴파일 Diff (Before vs After)</button>
+      <button class="tab-btn" onclick="openTab('tab-eval', this)">L8 Eval &amp; 실패 큐레이션</button>
+      <button class="tab-btn" onclick="openTab('tab-bench', this)">범용 2-Way 성능 비교</button>
+    </div>
+
+    <section id="tab-contracts" class="tab-panel active card">
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
+        <input id="cap-search" type="text" placeholder="기능 이름/설명 검색..." oninput="renderContract()" />
+        <select id="cap-filter" onchange="renderContract()">
+          <option value="all">전체 기능</option>
+          <option value="constraints">제약조건 보유</option>
+          <option value="destructive">파괴적 작업(destructive)</option>
+          <option value="ui">UI Binding 보유</option>
+        </select>
+      </div>
+      <div style="overflow:auto;">
+        <table>
+          <thead><tr><th>Capability</th><th>Shape</th><th>Adapter</th><th>Oracles</th><th>UI Binding</th><th>제약조건</th></tr></thead>
+          <tbody id="contract-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="tab-knowledge" class="tab-panel card">
+      <h3>L6 승인 워크플로 DAG</h3>
+      <div id="dag-container"></div>
+      <h3>L5 Single Source of Truth 규칙 레지스트리</h3>
+      <div style="overflow:auto;">
+        <table>
+          <thead><tr><th>rule_id</th><th>적용 대상</th><th>심각도</th><th>상태</th><th>규칙 내용</th><th>출처(source_ref)</th></tr></thead>
+          <tbody id="rules-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="tab-diff" class="tab-panel card">
+      <div class="split-2">
+        <div>
+          <h3>Before · 원본 툴 문서 (source_docs_dir)</h3>
+          <pre id="diff-before"></pre>
+        </div>
+        <div>
+          <h3>After · 파이프라인 컴파일 산출물 (SKILL.md + GEMINI.md)</h3>
+          <pre id="diff-after"></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-eval" class="tab-panel card">
+      <div class="split-2">
+        <div>
+          <h3>L8 Main + Locked Holdout 검증 결과</h3>
+          <div id="eval-summary"></div>
+          <div style="overflow:auto;max-height:420px;margin-top:8px;">
+            <table>
+              <thead><tr><th>Case ID</th><th>Split</th><th>판정</th><th>근거 / 오류</th></tr></thead>
+              <tbody id="eval-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div>
+          <h3>실패 큐레이션 코퍼스 (failure_cases.jsonl)</h3>
+          <pre id="curation-pre"></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-bench" class="tab-panel card">
+      <h3>범용 2-Way 성능 비교: ① 원문 그대로(Baseline) vs ② 범용 파이프라인 산출물(Compiled)</h3>
+      <div id="bench-container"></div>
+    </section>
+  </main>
+
+  <div id="toast"></div>
+
+  <script>
+    let CURRENT_TOOL = null;
+    let STATE = { overview: null, contract: null, knowledge: null };
+
+    function toast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.style.display = 'block';
+      setTimeout(() => { el.style.display = 'none'; }, 3200);
+    }
+
+    function openTab(id, btn) {
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      btn.classList.add('active');
+    }
+
+    async function api(path, method = 'GET', body = null) {
+      const opts = { method, headers: {} };
+      if (body !== null) {
+        opts.headers['Content-Type'] = 'application/json';
+        opts.body = JSON.stringify(body);
+      }
+      const r = await fetch(path, opts);
+      return await r.json();
+    }
+
+    function onToolChanged() {
+      CURRENT_TOOL = document.getElementById('tool-select').value;
+      refreshAll();
+    }
+
+    async function refreshAll() {
+      const q = CURRENT_TOOL ? `?tool=${encodeURIComponent(CURRENT_TOOL)}` : '';
+      const [ov, ct, kn] = await Promise.all([
+        api('/api/overview' + q),
+        api('/api/contract' + q),
+        api('/api/knowledge' + q),
+      ]);
+      STATE = { overview: ov, contract: ct, knowledge: kn };
+      if (ov.empty) {
+        CURRENT_TOOL = null;
+        document.getElementById('tool-select').innerHTML = '<option value="">(등록된 툴 없음)</option>';
+        document.getElementById('header-sub').textContent = '신규 툴 온보딩 대기 중 · 02_l1_l4_extractor로 첫 계약을 추출해 workspace/contracts/에 배치하세요.';
+        renderOverview();
+        renderContract();
+        renderKnowledge();
+        renderDiff();
+        renderEval();
+        renderBenchmarks();
+        return;
+      }
+      CURRENT_TOOL = ov.tool_id;
+      const sel = document.getElementById('tool-select');
+      sel.innerHTML = (ov.tools || [ov.tool_id]).map(t =>
+        `<option value="${t}" ${t === ov.tool_id ? 'selected' : ''}>Tool: ${t}</option>`
+      ).join('');
+      document.getElementById('header-sub').textContent =
+        `대상 툴: ${ov.tool_id} v${ov.tool_version} (권장 스킬 ${ov.recommended_release_version}) · 범용 L1–L8 파이프라인`;
+      renderOverview();
+      renderContract();
+      renderKnowledge();
+      renderDiff();
+      renderEval();
+      renderBenchmarks();
+    }
+
+    function renderOverview() {
+      const ov = STATE.overview;
+      const mainEval = ov.latest_main_eval;
+      const holdEval = ov.latest_holdout_eval;
+      const pub = (ov.releases || []).find(r => r.status === 'PUBLISHED');
+      const latest = ov.latest_run;
+
+      document.getElementById('kpis').innerHTML = `
+        <div class="card"><div class="kpi-label">L1–L4 계약 정규화</div><div class="kpi-value">${ov.capabilities_count}</div><div class="kpi-sub">제약 ${ov.constraints_count}개 · UI Binding ${ov.ui_bindings_count}개</div></div>
+        <div class="card"><div class="kpi-label">L8 Main Eval</div><div class="kpi-value">${mainEval ? mainEval.pass_rate + '%' : '-'}</div><div class="kpi-sub">${mainEval ? `${mainEval.passed_cases}/${mainEval.total_cases} 통과 · 허위완료 ${mainEval.false_completions}` : '미실행'}</div></div>
+        <div class="card"><div class="kpi-label">Locked Holdout</div><div class="kpi-value">${holdEval ? holdEval.pass_rate + '%' : '-'}</div><div class="kpi-sub">${holdEval ? `${holdEval.passed_cases}/${holdEval.total_cases} 통과` : '미실행'}</div></div>
+        <div class="card"><div class="kpi-label">활성 스킬 버전 (대상 ${ov.tool_version})</div><div class="kpi-value">${pub ? pub.version : '없음'}</div><div class="kpi-sub">${pub ? pub.release_id : '승인 대기 중'}</div></div>
+      `;
+
+      const stages = ['NEW','ADMITTED','GENERATED','TESTED','EVALUATED','RELEASE_CANDIDATE','APPROVED','PUBLISHED'];
+      const curStatus = latest ? latest.status : 'NEW';
+      const curIdx = stages.indexOf(curStatus);
+      document.getElementById('run-meta').textContent = latest
+        ? `run_id=${latest.run_id} · status=${curStatus} · attempt=${latest.attempt} · model=${latest.model_id}`
+        : '아직 파이프라인 실행 이력이 없습니다.';
+      document.getElementById('state-strip').innerHTML = stages.map((st, idx) => {
+        let cls = 'state-node';
+        if (curStatus === 'BLOCKED' && idx === curIdx) cls += ' blocked';
+        else if (curIdx >= idx && curIdx !== -1) cls += (idx === curIdx ? ' active' : ' done');
+        return `<div class="${cls}">${st}</div>`;
+      }).join('<span>→</span>') + (['TRIAGED','PATCH_PROPOSED','RETEST','BLOCKED'].includes(curStatus)
+        ? `<span class="badge warn" style="margin-left:8px;">${curStatus}</span>` : '');
+
+      const actEl = document.getElementById('release-actions');
+      let btns = '';
+      if (latest && latest.status === 'RELEASE_CANDIDATE') {
+        const ver = latest.summary?.release_version || ov.recommended_release_version;
+        btns += `<button onclick="approveRelease('${latest.run_id}','${ver}')">✓ Release 승인·배포 (${ver})</button>`;
+      }
+      if ((ov.releases || []).some(r => r.status === 'SUPERSEDED' || r.status === 'ROLLED_BACK')) {
+        btns += `<button class="danger" onclick="rollbackRelease()">↶ 이전 버전 롤백</button>`;
+      }
+      actEl.innerHTML = btns;
+    }
+
+    function renderContract() {
+      const caps = STATE.contract?.capabilities || [];
+      const q = document.getElementById('cap-search').value.trim().toLowerCase();
+      const f = document.getElementById('cap-filter').value;
+      const filtered = caps.filter(c => {
+        if (q && !c.id.toLowerCase().includes(q) && !(c.description || '').toLowerCase().includes(q)) return false;
+        if (f === 'ui' && !c.ui_binding) return false;
+        if (f === 'constraints' && !(c.constraints || []).length) return false;
+        if (f === 'destructive' && !c.destructive) return false;
+        return true;
+      });
+      document.getElementById('contract-tbody').innerHTML = filtered.map(c => `
+        <tr>
+          <td><strong>${c.id}</strong><div class="kpi-sub">${(c.description || '').slice(0, 90)}</div></td>
+          <td><span class="badge">${c.shape}</span></td>
+          <td><code>${c.adapter_id}</code></td>
+          <td>${(c.oracle_ids || []).map(o => `<span class="badge">${o}</span>`).join(' ')}</td>
+          <td>${c.ui_binding ? `<span class="badge ok">${c.ui_binding.control} (${(c.ui_binding.fields||[]).length}f)</span>` : '-'}</td>
+          <td>${(c.constraints || []).map(x => `<div><code>${x.id}</code>: ${x.rule}</div>`).join('') || '-'}</td>
+        </tr>
+      `).join('');
+    }
+
+    function renderKnowledge() {
+      const kn = STATE.knowledge;
+      const wfs = kn?.workflows?.workflows || [];
+      document.getElementById('dag-container').innerHTML = wfs.length ? wfs.map(w => `
+        <div class="dag-box">
+          <strong>${w.workflow_id}</strong> ${w.approval_gate ? '<span class="badge warn">사용자 승인 게이트</span>' : '<span class="badge ok">자동 DAG</span>'}
+          <div class="kpi-sub">${w.description}</div>
+          <div class="dag-flow">
+            ${w.nodes.map((n, i) => `${i > 0 ? '<span>→</span>' : ''}<div class="dag-node"><b>${n.node_id}</b><br/><code>${n.capability_id}</code></div>`).join('')}
+          </div>
+        </div>
+      `).join('') : '<p class="kpi-sub">선언된 워크플로 DAG 없음 (단일 기능/자율 조합 모드)</p>';
+
+      const rules = kn?.knowledge?.rules || [];
+      document.getElementById('rules-tbody').innerHTML = rules.map(r => `
+        <tr>
+          <td><code>${r.rule_id}</code></td>
+          <td>${(r.applies_to || []).join(', ')}</td>
+          <td><span class="badge ${r.severity === 'critical' ? 'err' : 'warn'}">${r.severity}</span></td>
+          <td><span class="badge ok">${r.status}</span></td>
+          <td>${r.statement}</td>
+          <td><code>${r.source_ref}</code></td>
+        </tr>
+      `).join('');
+    }
+
+    function renderDiff() {
+      const ov = STATE.overview;
+      const d = ov?.diff || {};
+      const tid = ov?.tool_id || 'tool';
+      document.getElementById('diff-before').textContent =
+        `=== 원본 추가 규칙 ===\n${d.raw_extra_md || '(없음)'}\n\n=== 원본 SKILL.md (앞부분) ===\n${(d.raw_skill_md || '(없음)').slice(0, 2600)}`;
+      document.getElementById('diff-after').textContent =
+        `=== .agents/rules/${tid}-compiled.md (GEMINI.md) ===\n${d.compiled_rules_md || ''}\n\n=== .agents/skills/${tid}-compiled/SKILL.md ===\n${d.compiled_skill_md || ''}`;
+    }
+
+    function renderEval() {
+      const ov = STATE.overview;
+      const combined = [
+        ...(ov.latest_main_eval?.case_verdicts || []),
+        ...(ov.latest_holdout_eval?.case_verdicts || []),
+      ];
+      document.getElementById('eval-summary').innerHTML = ov.latest_main_eval
+        ? `<span class="badge ok">Main: ${ov.latest_main_eval.passed_cases}/${ov.latest_main_eval.total_cases}</span> `
+          + `<span class="badge ok">Holdout: ${ov.latest_holdout_eval?.passed_cases ?? 0}/${ov.latest_holdout_eval?.total_cases ?? 0}</span> `
+          + `<span class="badge ${ov.latest_main_eval.false_completions ? 'err' : 'ok'}">허위 완료: ${ov.latest_main_eval.false_completions}</span>`
+        : '<span class="kpi-sub">실행 결과 없음</span>';
+
+      document.getElementById('eval-tbody').innerHTML = combined.map(c => `
+        <tr>
+          <td><code>${c.case_id}</code></td>
+          <td><span class="badge">${c.split}</span></td>
+          <td><span class="badge ${c.rule_passed ? 'ok' : 'err'}">${c.rule_passed ? 'PASS' : 'FAIL'}</span></td>
+          <td>${c.failure_reason || (c.oracle_verdicts || []).map(x => `${x.oracle_id}: ${x.reason}`).join(' | ')}</td>
+        </tr>
+      `).join('');
+
+      document.getElementById('curation-pre').textContent = (ov.failure_corpus || []).length
+        ? JSON.stringify(ov.failure_corpus, null, 2)
+        : '현재 최신 실행에 큐레이션된 실패 케이스가 없습니다.\n("결함 주입·자동수정 시연" 버튼으로 폐루프를 테스트할 수 있습니다.)';
+    }
+
+    function renderBenchmarks() {
+      const bms = STATE.overview?.benchmarks || [];
+      const el = document.getElementById('bench-container');
+      if (!bms.length) {
+        el.innerHTML = '<p class="kpi-sub">아직 실행된 2-Way 벤치마크가 없습니다. 상단 "2-Way 벤치마크 갱신"을 눌러 실행하세요.</p>';
+        return;
+      }
+      const controlled = bms[0];
+      const s = controlled.summary || {};
+      const base = s.baseline || {};
+      const comp = s.compiled || {};
+      const m = s.metrics || {};
+      const tasks = controlled.details?.tasks || [];
+
+      el.innerHTML = `
+        <div class="kpi-grid">
+          <div class="card"><div class="kpi-label">실제 툴 기능 통과율 (Baseline → Compiled)</div>
+            <div class="kpi-value">${base.runtime_tool_pass_rate ?? '-'}% → ${comp.runtime_tool_pass_rate ?? '-'}%</div>
+            <div class="kpi-sub">${m.runtime_tool_passed_baseline ?? '-'}/${m.runtime_tool_total ?? '-'} 통과 (기존 MCP 스키마/기능 유지)</div>
+          </div>
+          <div class="card"><div class="kpi-label">스킬 패키징 · 구조 점수 (Baseline → Compiled)</div>
+            <div class="kpi-value">${base.packaging_score ?? '-'}/${base.packaging_max ?? '-'} → ${comp.packaging_score ?? '-'}/${comp.packaging_max ?? '-'}</div>
+            <div class="bar-wrap"><div class="bar-fill base" style="width:${base.packaging_rate || 0}%"></div></div>
+            <div class="bar-wrap"><div class="bar-fill" style="width:${comp.packaging_rate || 0}%"></div></div>
+          </div>
+          <div class="card"><div class="kpi-label">상단 필수 규칙 정합률 &amp; 응답 속도</div>
+            <div class="kpi-value">${base.entry_rule_rate ?? '-'}% → ${comp.entry_rule_rate ?? '-'}%</div>
+            <div class="kpi-sub">실호출 ${m.sandbox_tool_calls ?? 0}회 평균 ${m.avg_ms_per_call ?? '-'} ms/call · 허위완료 ${m.false_completions ?? 0}건</div>
+          </div>
+        </div>
+        <p class="kpi-sub">Benchmark ID: <code>${controlled.benchmark_id}</code> · Version: <code>${m.release_version || m.tool_version || '-'}</code> · Created: ${controlled.created_at}</p>
+        <table>
+          <thead><tr><th>기준</th><th>평가 항목</th><th>Baseline (v${m.tool_version || '0.1.1'})</th><th>Compiled (v${m.release_version || '-'})</th></tr></thead>
+          <tbody>
+            ${tasks.map(t => `
+              <tr>
+                <td><code>${t.task_id}</code></td>
+                <td>${t.title}<div class="kpi-sub">${t.description || t.rule_id}</div></td>
+                <td><span class="badge ${t.baseline.passed ? 'ok' : 'warn'}">${t.baseline.score}</span> ${t.baseline.note}</td>
+                <td><span class="badge ${t.compiled.passed ? 'ok' : 'err'}">${t.compiled.score}</span> ${t.compiled.note}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    async function runPipeline(injectDefect) {
+      toast(injectDefect ? '결함 주입 + 폐루프 자동수정 실행 중...' : '파이프라인 실행 중...');
+      const ver = injectDefect
+        ? `${STATE.overview?.recommended_release_version || '0.1.2'}-demo`
+        : (STATE.overview?.recommended_release_version || null);
+      const res = await api('/api/pipeline/run', 'POST', {
+        tool_id: CURRENT_TOOL,
+        inject_defect: injectDefect,
+        ...(ver ? { version: ver } : {}),
+      });
+      toast(`완료: ${res.status} (${res.version || ''}, 시도 ${res.attempts}회)`);
+      await refreshAll();
+    }
+
+    async function approveRelease(runId, version) {
+      const res = await api('/api/release/approve', 'POST', { tool_id: CURRENT_TOOL, run_id: runId, version });
+      toast(res.ok ? `릴리스 승인·배포 완료: ${res.release_id}` : `실패: ${res.error}`);
+      await refreshAll();
+    }
+
+    async function rollbackRelease() {
+      const res = await api('/api/release/rollback', 'POST', { tool_id: CURRENT_TOOL });
+      toast(res.ok ? `롤백 완료: ${res.version}` : `롤백 불가: ${res.reason}`);
+      await refreshAll();
+    }
+
+    async function runBenchmark() {
+      toast('범용 2-Way 벤치마크 실행 중...');
+      const res = await api('/api/benchmark/run', 'POST', { tool_id: CURRENT_TOOL });
+      toast(`벤치마크 완료: ${res.benchmark_id}`);
+      await refreshAll();
+    }
+
+    refreshAll();
+  </script>
+</body>
+</html>

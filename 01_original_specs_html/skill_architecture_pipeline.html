@@ -1,0 +1,96 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CASE 03 | Skill Lifecycle Engineering</title><style>body{margin:0;background:#f1f5f9;color:#172638;font:16px/1.65 system-ui,sans-serif}main{max-width:1040px;margin:auto;padding:20px}header{background:#172638;color:white;padding:28px;border-radius:16px}h1{line-height:1.25;font-size:32px}h2{margin-top:36px}h3{margin-top:0}article,.panel{background:white;padding:20px;border-radius:12px;margin:14px 0}article{border-left:7px solid #087e83}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.node{border:2px solid #087e83;background:#d9f3f0;padding:14px;border-radius:10px}.vendor{border-color:#c46b16;background:#ffead4}.code{border-color:#2458a6;background:#e5edff}.ai{border-color:#7555aa;background:#eee8fa}.human{border-color:#a37617;background:#fff5d8}.arrow{text-align:center;font-weight:bold;color:#536477;padding:5px}.small{font-size:13px;color:#526477}pre{background:#172638;color:#e9f1fa;padding:16px;border-radius:9px;overflow:auto;font-size:13px}table{width:100%;border-collapse:collapse}td,th{padding:10px;text-align:left;border-bottom:1px solid #dbe4ec;vertical-align:top}th{background:#e5edf3}.scroll{overflow:auto}a{color:#087e83}nav a{margin-right:12px} .tag{display:inline-block;border-radius:6px;padding:2px 8px;font-size:13px;font-weight:bold} @media print{article,.node{break-inside:avoid}body{background:white}} </style></head><body><main><header><small>AGENT ENGINEERING · ARTIFACT 03 / 기술 구현 설계 제안</small><h1>Skill Lifecycle Engineering Pipeline</h1><p>공통 L5–L8 구현: 생성 · 평가 · 실패 큐레이션 · 개선 · 유지보수 · 배포</p><p>대상: 특정 산업이나 모델에 종속되지 않는 사내 스킬 개발 엔진. 실제 사용자 업무를 수행하는 Agent Runtime은 별도이며, 검증 시에는 해당 Runtime과 실제 툴을 시험 대상으로 사용한다.</p></header><nav class="panel"><a href="#overview">전체 구조</a><a href="#layers">계층별 설계</a><a href="#eval">Eval</a><a href="#loop">개선 루프</a><a href="#impl">구현</a><a href="#roadmap">개발 계획</a></nav><h2 id="overview">01 / 기존 아티팩트에서 이어지는 범위</h2><div class="panel"><div class="grid"><div class="node"><b>ARTIFACT 01 · 소스 접근 가능</b><p>L1 기능 공개 → L2 기능 명세 → L3 실행 제어 → L4 기술 검증</p>사내 코드 분석 및 부족 기능 구현</div><div class="node vendor"><b>ARTIFACT 02 · EDA 블랙박스</b><p>L1 기능 공개 → L2 기능 명세 → L3 실행 제어 → L4 기술 검증</p>업체 제공 및 사내 계약 검증</div></div><div class="arrow">↓ 두 경로 합류 ↓</div><div class="node code"><b>표준 입력 계약 + Admission Gate</b><br>기능 레지스트리 · 스키마 · 실행 어댑터 · 검증 계약 · 출처/버전<br>미확인 필수 항목은 보완 요청, 검증 가능한 범위만 승인</div><div class="arrow">↓ 기존 두 문서의 공통 L5–L8 발췌 및 기술 구현 ↓</div><div style="border:2px dashed #087e83;padding:14px;border-radius:12px"><b>ARTIFACT 03 · 공통 구현 범위</b><div class="node">L5 · 업무 지식 구축 — Knowledge Registry</div><div class="arrow">↓</div><div class="node">L6 · 워크플로 설계 — Workflow DAG</div><div class="arrow">↓</div><div class="node">L7 · 스킬 생성 — Skill Compiler</div><div class="arrow">↓</div><div class="node">L8 · 에이전트 검증 — Test / Eval / Curation / Refinement</div><div class="arrow">↺ 실패 원인에 따라 L5·L6·L7 또는 L1–L4 계약으로 환류</div><div class="node code">회귀 테스트 → Release Gate → 버전 고정 스킬 패키지</div></div><p class="small">청록: 사내 수행 · 주황: 업체 제공 및 공동 검증 · 파랑: 결정론적 코드 · 보라: AI · 황색: 사람 승인. 이 구조는 설계 제안이며 구현 및 시험 완료를 의미하지 않는다.</p></div><h2>02 / 제어 흐름과 역할 분리</h2><div class="panel"><div class="node code">① 계약 검증 · 상태 생성 · 버전 스냅샷</div><div class="arrow">↓</div><div class="node ai">② 업무 지식 / 워크플로 / 스킬 후보 및 테스트 초안 생성</div><div class="arrow">↓</div><div class="node code">③ 스키마 검사 · DAG 검사 · 실제 툴 실행 · 증거 저장</div><div class="arrow">↓</div><div class="grid"><div class="node code">④ 규칙 기반 Eval<br>입출력, 제약, 상태, 결과 허용오차</div><div class="node ai">⑤ 독립 AI Eval<br>의도 충족, 의미적 충돌, 실패 원인 후보</div></div><div class="arrow">↓</div><div class="grid"><div class="node human">실패 → 큐레이션 → 수정 승인 → 재시험 ↺</div><div class="node code">통과 → 독립 holdout / 회귀 테스트 → 배포 후보</div></div><div class="arrow">↓</div><div class="node human">위험 변경 및 신규 배포 승인 → 원자적 버전 전환 / 롤백 가능</div></div><h2 id="layers">03 / L5–L8 계층별 구현 상세</h2><article><h3>L5 · Knowledge Construction</h3><dl><dt><b>입력</b></dt><dd>계약 + 사용자 요구 + 승인된 업무 사례</dd><dt><b>구현 방법</b></dt><dd>AI가 지식 후보를 추출하고 용어·조건·우선순위를 정규화. 사람이 업무 정책과 성공 조건을 확정. 코드가 rule_id, 출처, 버전 및 참조 무결성을 검사.</dd><dt><b>산출물</b></dt><dd>knowledge.json, policy.json, intent_catalog.json</dd><dt><b>통과 기준</b></dt><dd>모든 필수 규칙에 근거와 소유자 존재; 미확인 규칙은 unknown으로 표시.</dd></dl></article><article><h3>L6 · Workflow Construction</h3><dl><dt><b>입력</b></dt><dd>L5 지식 + capability registry + 입출력 타입</dd><dt><b>구현 방법</b></dt><dd>AI가 DAG 후보와 분기를 생성. 코드가 타입 호환, 순환, 선행 조건, 부작용, 오류 처리 및 중단 정책을 검사. 사용자 요구를 기존 툴 순서와 구분.</dd><dt><b>산출물</b></dt><dd>workflow.json, dependency_graph.json, adapter bindings</dd><dt><b>통과 기준</b></dt><dd>모든 경로의 필수 입력 공급 가능; 불허 경로 및 무한 루프 차단.</dd></dl></article><article><h3>L7 · Skill Construction</h3><dl><dt><b>입력</b></dt><dd>승인된 규칙·워크플로·기능 ID</dd><dt><b>구현 방법</b></dt><dd>AI가 사용자 의도, 질문 조건, 도구 선택 지침을 작성. 컴파일러가 공통 규칙을 참조로 삽입하고 스키마 및 중복 검사. 생성된 스킬은 빌드 산출물로 취급.</dd><dt><b>산출물</b></dt><dd>SKILL.md, skill manifest, intent routing map</dd><dt><b>통과 기준</b></dt><dd>모든 참조 유효; 규칙 충돌 없음; 소스·모델·프롬프트 버전 기록.</dd></dl></article><article><h3>L8 · Agent Validation</h3><dl><dt><b>입력</b></dt><dd>스킬 후보 + 계약 테스트 + 업무 테스트 + 실제 실행 환경</dd><dt><b>구현 방법</b></dt><dd>케이스 생성, 격리 실행, 결정론적 평가와 독립 AI 평가, 실패 큐레이션, 수정, 재시험. 독립 평가 데이터와 배포 게이트 유지.</dd><dt><b>산출물</b></dt><dd>eval_report.json, evidence/, failure_cases.jsonl, release manifest</dd><dt><b>통과 기준</b></dt><dd>필수 테스트 전부 통과; 미검증 필수 기능 없음; 승인 및 롤백 준비.</dd></dl></article><h2>04 / L1–L4 표준 계약: 입력이 부족하면 생성하지 않는다</h2><div class="panel scroll"><table><tr><th>입력</th><th>필수 확인</th></tr><tr><td>L1</td><td>tool_id, version, capability_id, 실행 진입점, 인증/라이선스, 부작용 및 권한</td></tr><tr><td>L2</td><td>JSON Schema, 기본값, 단위, 허용 범위, 교차 제약, 의존성, 권장 사용 조건</td></tr><tr><td>L3</td><td>job_id, 상태 모델, timeout, 동시성, 중단·재시작 가능 여부, 오류 코드, 재시도 안전성</td></tr><tr><td>L4</td><td>입력 검증, 결과 판정 기준, 샘플과 기대값, 허용오차, 테스트 환경 및 버전 변경 이력</td></tr></table><p>계약 테스트가 실패하면 업체 또는 코드 소유자에게 근거와 함께 반환. 지원하지 않는 실행 기능은 명시적으로 unavailable 처리하고 스킬이 약속하지 않도록 한다.</p></div><pre>contract.json (예시; 실제 툴 명세 아님)
+{
+  "tool_id": "tool_a", "version": "1.0",
+  "capability_id": "analyze",
+  "input_schema": {"type":"object", "required":["n"],
+    "properties":{"n":{"type":"integer","minimum":1,"maximum":100}}},
+  "output_schema_ref":"schemas/result.json",
+  "adapter_id":"local_cli", "timeout_s":60,
+  "supports_cancel":false, "idempotent":false,
+  "oracle_ref":"oracles/analyze_v1.json",
+  "source_ref":"approved_contract_v1", "status":"verified"
+}</pre><h2 id="eval">05 / 테스트 생성 및 Eval 설계</h2><div class="panel scroll"><table><tr><th>테스트 종류</th><th>생성 근거 / 판정</th></tr><tr><td>정상·경계·오류</td><td>L2 스키마에서 min/max, 범위 밖, 누락, 잘못된 타입을 코드로 생성. 승인된 오류 계약으로 판정.</td></tr><tr><td>상태 및 제어</td><td>L3 지원 기능에 대해 timeout, 중단, 동시 실행, 재시도 및 상태 전이 검사.</td></tr><tr><td>결과 검증</td><td>L4 골든 데이터와 허용오차 비교. 정답이 없는 경우 승인된 불변조건 또는 관계 기반 테스트 활용; 근거 없는 정답 생성 금지.</td></tr><tr><td>업무 의도</td><td>L5 사용자 요구에서 모호한 명령, 추가 질문, 금지 행위, 복합 시나리오 생성. 독립 평가 기준으로 판정.</td></tr><tr><td>워크플로·스킬</td><td>L6–L7에서 잘못된 순서, 누락, 충돌, 불필요한 호출 및 완료 허위 보고 탐지.</td></tr></table><p>테스트 생성 AI와 평가 AI의 컨텍스트를 분리하고, 가능하면 모델도 분리한다. 실제 실행 결과와 결정론적 판정이 우선하며 AI 판단만으로 필수 게이트를 통과시키지 않는다. 생성/수정 데이터와 잠금된 holdout을 분리한다.</p></div><pre>test_case.json (예시)
+{"case_id":"boundary_001", "requirement_id":"R-01",
+ "input":{"n":0}, "expected":{"status":"invalid_input"},
+ "oracle":"approved_contract", "severity":"critical",
+ "split":"regression", "seed":42}</pre><div class="panel scroll"><table><tr><th>지표</th><th>초기 제안 기준 (협의 후 확정)</th></tr><tr><td>필수 계약·안전 테스트</td><td>100% 통과, 미실행/미확인 0건</td></tr><tr><td>업무 성공률</td><td>예: 95% 이상, 전체 대상 케이스를 분모로 사용; 실패·미실행 별도 공개</td></tr><tr><td>허위 완료 / 금지 경로</td><td>0건</td></tr><tr><td>요구사항 커버리지</td><td>필수 rule_id 100% 테스트 연결; 커버리지는 정확성을 보장하지 않음</td></tr><tr><td>회귀 및 안정성</td><td>필수 기존 테스트 악화 0건; 확률적 결과는 반복 수 및 신뢰구간 보고</td></tr></table></div><h2 id="loop">06 / 실패 큐레이션과 폐루프 개선</h2><div class="panel"><div class="node code">실패 증거 저장: 입력·출력·로그·버전·판정·재현 조건</div><div class="arrow">↓</div><div class="node ai">원인 분류 후보: 계약 / 지식 / 워크플로 / 스킬 / 툴 / 평가 오류</div><div class="arrow">↓</div><div class="node code">정규화 · 해시 중복 제거 · 최소 재현 케이스 · 심각도 분류</div><div class="arrow">↓</div><div class="node human">오라클 불명확·정책 변경·업체 계약 결함은 사람 또는 업체로 이관</div><div class="arrow">↓</div><div class="node ai">근거를 인용한 제한적 수정 후보 생성 (영향 계층만)</div><div class="arrow">↓</div><div class="node code">변경 diff 검사 → 실패 재현 테스트 → 관련 회귀 → 전체 회귀 → holdout</div><p>동일 실패 반복, 최대 반복 횟수 초과(예: 3회), 비용 한도 초과, 계약 변경 필요 시 자동 중단. 평가 기준을 완화하여 통과시키는 수정은 금지. 마지막 승인 버전 유지.</p></div><pre>failure_cases.jsonl (한 레코드 예시)
+{"case_id":"boundary_001","run_id":"r012",
+ "failure_class":"skill_rule","evidence_ref":"runs/r012/log.json",
+ "affected_ids":["R-01","skill_a"],"severity":"critical",
+ "reproducible":true,"status":"triaged"}</pre><h2 id="impl">07 / 구현 구조 및 상태 관리</h2><pre>skill_factory/
+  contracts/          # L1–L4, schemas, adapters, oracles
+  knowledge/          # L5: rules, policies, intents
+  workflows/          # L6: DAG definitions
+  skills/             # L7: source and compiled packages
+  tests/              # L8: generated / regression / locked holdout
+  engine/
+    admission.py      # contract gate
+    synthesize.py     # AI provider adapter + structured generation
+    compile.py        # deterministic checks
+    execute.py        # sandbox / runtime adapter
+    evaluate.py       # oracle + independent judge
+    curate.py         # reproducible failure corpus
+    refine.py         # scoped patch proposals
+    release.py        # approval, atomic publish, rollback
+    state.py          # SQLite transactions / checkpoints
+  prompts/            # versioned templates
+  runs/               # evidence, immutable snapshots
+  releases/           # versioned packages</pre><div class="panel"><b>상태 머신</b><p>NEW → ADMITTED → GENERATED → TESTED → EVALUATED → RELEASE_CANDIDATE → APPROVED → PUBLISHED. 실패 시 TRIAGED → PATCH_PROPOSED → RETEST 또는 BLOCKED. 중단은 CANCELLED / PAUSED로 기록하고 지원 가능한 단계만 재개한다.</p><p>각 실행은 run_id, 입력 해시, stage, attempt, artifact_refs, model_id, prompt_version, budget, parent_run_id를 저장한다. SQLite 트랜잭션과 파일 해시로 상태 및 증거를 연결한다. 부작용 있는 호출은 멱등성 확인 없이 재시도하지 않는다.</p></div><pre># orchestration.py — 설계용 의사코드, 실제 adapter 구현 필요
+ def build(contract, user_requirements, max_attempts=3):
+     admitted = admission.verify(contract)
+     if not admitted.ok:
+         return state.block(admitted.evidence)
+     candidate = synthesize.generate(admitted, user_requirements)
+     for attempt in range(max_attempts):
+         compile.validate(candidate)
+         suite = tests.build(candidate, admitted)
+         evidence = execute.run_isolated(suite, candidate)
+         result = evaluate.check(evidence, approved_oracles)
+         state.checkpoint(candidate, result)
+         if result.required_pass:
+             regression = evaluate.locked_regression(candidate)
+             if regression.pass_gate:
+                 return release.request_approval(candidate, regression)
+             result = regression
+         failures = curate.collect(result)
+         if failures.requires_owner or failures.repeated:
+             return state.block(failures)
+         candidate = refine.propose(candidate, failures)
+     return state.block("iteration_limit")</pre><div class="panel"><b>AI 호출 계약</b><p>입력은 승인된 문서·규칙 ID·실패 증거·허용 수정 범위, 출력은 JSON Schema로 제한한다. 생성 프롬프트: “근거가 있는 기능만 사용하고, 불명확한 조건은 unknown으로 표시하며, 모든 규칙에 source_ref를 제공하라.” 평가 프롬프트: “후보 생성자의 설명을 신뢰하지 말고 실행 증거와 승인 기준을 대조해 verdict, evidence_ref, uncertainty를 반환하라.” 수정 프롬프트: “실패를 재현한 규칙에 한해 최소 diff를 제안하고 평가 기준은 변경하지 말라.”</p><p>모델 교체는 provider adapter로 격리. 사내 승인 모델/서버, 프로젝트 경로 제한, venv, 외부 전송 차단을 기본 전제로 한다. 비밀값은 로그에서 제거하고 실제 툴의 위험한 실행은 격리 또는 승인한다.</p></div><h2>08 / 유지보수 및 드리프트 제어</h2><div class="panel"><p><b>Single Source of Truth:</b> rule_id와 capability_id를 중심으로 원천 명세를 버전 관리하고 스킬은 이를 참조해 생성한다. 자연어 중복은 컴파일 산출물로만 허용하며 원천 수정 후 재생성한다.</p><p><b>변경 감지:</b> 계약·툴·업무 규칙·프롬프트·모델 변경 시 해시 및 구조적 diff → 역참조 그래프로 영향 스킬 식별 → 의미적 충돌 검사 → 관련 및 전체 회귀 → 승인. 모델/툴 버전과 평가 환경을 함께 고정한다.</p><p><b>배포:</b> 승인된 패키지에 manifest와 증거 해시를 기록하고 이전 버전을 보존한다. 호환되지 않는 툴 버전에서는 이전 스킬도 재검증 후 롤백한다. 평가 데이터는 별도 권한으로 보호한다.</p></div><h2 id="roadmap">09 / 단계별 구현 계획</h2><div class="panel scroll"><table><tr><th>단계</th><th>완료 조건</th></tr><tr><td>P0 · 계약 표준화</td><td>두 소스 유형 모두 동일 스키마로 입수, 부족 항목 차단</td></tr><tr><td>P1 · L5–L7 MVP</td><td>대표 기능 1개로 지식→DAG→스킬 생성 및 정적 검사 재현</td></tr><tr><td>P2 · L8 Eval</td><td>실제 호출 증거, 독립 오라클, 정상·경계·오류 테스트 자동 판정</td></tr><tr><td>P3 · 개선 루프</td><td>의도적으로 삽입한 결함 수집·재현·수정·회귀 및 종료 조건 검증</td></tr><tr><td>P4 · 유지보수</td><td>명세 변경 시 영향 스킬만 우선 재생성, 전체 회귀 및 승인·롤백 검증</td></tr><tr><td>P5 · 확장</td><td>두 번째 툴을 추가하여 adapter/contract 외 엔진 재사용성 입증</td></tr></table><p><b>보고 결론:</b> 스킬을 채팅으로 일회성 작성하는 방식에서, 표준 계약을 입력받아 스킬의 전체 생애주기를 코드로 관리하는 개발 체계로 전환한다. Artifact 01·02는 정보 확보와 책임 모델, Artifact 03은 공통 L5–L8의 실제 자동화 설계다.</p></div><h2>10 / 공통 엔진과 툴별 확장 경계 (개정 v1.1)</h2><div class="panel"><p>Artifact 01·02의 L1–L4 산출물을 공통 계약으로 정규화하고 L5–L8을 동일한 개발 엔진으로 처리한다. 표준화 대상은 실제 입출력이 아니라 그 입출력을 기술하는 메타 스키마다.</p><div class="grid"><div class="node vendor"><b>A툴 전용</b><br>파일 경로·숫자 입력 → 파일 출력<br>CLI adapter + 파일 검증기</div><div class="node vendor"><b>B툴 전용</b><br>배열·문자열 입력 → JSON 출력<br>API adapter + JSON 검증기</div></div><div class="arrow">↓ 각 툴의 manifest + schema + adapter ↓</div><div class="node code"><b>공통 엔진 (동일 코드)</b><br>계약 검사 → L5 지식 → L6 워크플로 → L7 스킬 → L8 테스트/Eval → 큐레이션 → 개선 → 회귀 → 승인</div><div class="arrow">↓ 독립 실행 증거 및 배포 패키지 ↓</div><div class="grid"><div class="node">A툴용 검증된 스킬셋</div><div class="node">B툴용 검증된 스킬셋</div></div><h3>메타 스키마 예시: 동일 필드, 서로 다른 고유 스키마</h3><pre>{
+ "schema_version": "1.0",
+ "tool_id": "A",
+ "tool_version": "1.2",
+ "capabilities": [{
+   "id": "transform",
+   "input_schema": {"type":"object","properties":{
+     "path":{"type":"string"},"threshold":{"type":"number"}},
+     "required":["path","threshold"],"additionalProperties":false},
+   "output_schema": {"type":"object","properties":{
+     "output_path":{"type":"string"}},"required":["output_path"]},
+   "adapter_id":"a_cli", "oracle_ids":["a_file_valid"],
+   "constraints":[], "dependencies":[], "source_ref":"A/spec/v1.2"
+ }]
+}</pre><pre>{
+ "schema_version":"1.0", "tool_id":"B", "tool_version":"2.0",
+ "capabilities":[{"id":"aggregate",
+   "input_schema":{"type":"object","properties":{
+     "values":{"type":"array","items":{"type":"number"},"minItems":1},
+     "method":{"enum":["mean","max"]}},"required":["values","method"]},
+   "output_schema":{"type":"object","properties":{
+     "result":{"type":"number"}},"required":["result"]},
+   "adapter_id":"b_api","oracle_ids":["b_numeric_expected"],
+   "constraints":[],"dependencies":[],"source_ref":"B/spec/v2.0"}]
+}</pre><p>예시는 가상 툴의 설명용이다. 실제 계약에는 실행 제어 지원 여부, 부작용, 권한, 오류 명세, 검증 근거와 버전 호환성도 필수로 관리한다.</p><div class="scroll"><table><tr><th>구분</th><th>공통 엔진</th><th>툴별 확장</th></tr><tr><td>데이터</td><td>메타 스키마 검증, ID/버전 관리</td><td>고유 JSON Schema, 제약, 업무 규칙, 오라클 등록</td></tr><tr><td>실행</td><td>타임아웃·상태·재시도 정책 제어</td><td>CLI/API 호출, 상태 조회, 취소, 출력 정규화</td></tr><tr><td>Eval</td><td>테스트 생성/실행/집계·게이트</td><td>파일 의미 검사, 수치 허용오차, 참조 결과</td></tr><tr><td>연결</td><td>타입 및 의존성 검사</td><td>필요 시 명시적 단위·형식·의미 변환</td></tr></table></div><h3>구현 경계 (Python 의사코드)</h3><pre>class ToolAdapter(Protocol):
+    def execute(self, capability_id, validated_input, run_context): ...
+    def status(self, handle): ...
+    def cancel(self, handle): ...
+
+# engine은 A/B 분기 대신 등록된 계약과 어댑터를 사용
+contract = admission.verify(load_manifest(tool_id))
+adapter = registry.resolve(contract.adapter_id)  # 승인된 구현만
+suite = testgen.build(contract, approved_business_rules)
+for case in suite:
+    validate(case.input, case.capability.input_schema)
+    evidence = adapter.execute(case.capability.id, case.input, context)
+    verdict = oracle_registry.evaluate(case.oracle_ids, evidence, case)
+    store.record(case, evidence, verdict)</pre><p>미지원 상태 조회나 취소는 명시적으로 unsupported 처리한다. 어댑터가 있다고 가정해 성공 판정하지 않는다. A 출력과 B 입력의 연결은 구조뿐 아니라 단위·의미·전제조건까지 검증하며, 변환은 별도 버전 관리 및 테스트를 거친다.</p><h3>신규 툴 온보딩 완료 기준</h3><p>① 계약 스키마 통과 ② 실제 호출 및 오류 계약 테스트 통과 ③ 독립 기대 결과 확보 ④ 툴별 어댑터·검증기 등록 ⑤ 공통 엔진 소스 변경 없이 스킬 생성·Eval·회귀 수행. 미충족 항목은 차단하고 담당자에게 이관한다. 공통 엔진 자체의 기능 부족이 확인되면 별도 설계 변경으로 관리한다.</p></div></main></body></html>
